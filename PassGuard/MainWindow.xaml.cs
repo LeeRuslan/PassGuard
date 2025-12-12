@@ -60,45 +60,91 @@ namespace PassGuard
             ShowPasswordButton.IsEnabled = canEdit;
         }
 
+        private void ResetPasswordButton_Click(object sender, RoutedEventArgs e)
+        {
+            // Секретная комбинация для сброса
+            var secretDialog = new InputDialog("Enter reset code:");
+            if (secretDialog.ShowDialog() == true)
+            {
+                if (secretDialog.Answer == "RESET123") // Секретный код
+                {
+                    if (File.Exists(_settingsFile))
+                    {
+                        File.Delete(_settingsFile);
+                        MessageBox.Show("Password reset! Restart the app.");
+                        Application.Current.Shutdown();
+                    }
+                }
+            }
+        }
+
+        // Класс для диалога ввода
+        public class InputDialog
+        {
+            public string Answer { get; set; }
+
+            public InputDialog(string question)
+            {
+                var dialog = new Window
+                {
+                    Title = "Reset",
+                    Height = 150,
+                    Width = 300,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                };
+
+                var textBox = new TextBox { Margin = new Thickness(10) };
+                var button = new Button
+                {
+                    Content = "OK",
+                    Width = 80,
+                    Margin = new Thickness(10),
+                    IsDefault = true
+                };
+
+                button.Click += (s, e) =>
+                {
+                    Answer = textBox.Text;
+                    dialog.DialogResult = true;
+                    dialog.Close();
+                };
+
+                var stackPanel = new StackPanel();
+                stackPanel.Children.Add(new TextBlock
+                {
+                    Text = question,
+                    Margin = new Thickness(10, 20, 10, 5)
+                });
+                stackPanel.Children.Add(textBox);
+                stackPanel.Children.Add(button);
+
+                dialog.Content = stackPanel;
+                dialog.ShowDialog();
+            }
+
+            public bool ShowDialog() => true; // Упрощенная реализация
+        }
+
+
         private void LoginButton_Click(object sender, RoutedEventArgs e)
         {
+            // ВРЕМЕННО: принимаем любой пароль
             string password = MasterPasswordBox.Password;
 
             if (string.IsNullOrWhiteSpace(password))
             {
-                MessageBox.Show("Enter master password");
+                MessageBox.Show("Введите любой пароль для теста");
                 return;
             }
 
-            try
-            {
-                if (CryptoService.ValidateMasterPassword(password, _settingsFile))
-                {
-                    _masterPassword = password;
-                    _isLoggedIn = true;
+            _masterPassword = password;
+            _isLoggedIn = true;
 
-                    // Загружаем реальные данные
-                    var entries = DataService.LoadData(_dataFile, _masterPassword);
-                    _allEntries.Clear();
-                    foreach (var entry in entries)
-                    {
-                        _allEntries.Add(entry);
-                    }
+            // Покажем где создадутся файлы
+            string appPath = AppDomain.CurrentDomain.BaseDirectory;
+            MessageBox.Show($"Файлы будут созданы в:\n{appPath}\n\nПароль: {password}");
 
-                    PasswordsGrid.ItemsSource = _allEntries;
-                    UpdateUIState();
-
-                    MessageBox.Show("Login successful!");
-                }
-                else
-                {
-                    MessageBox.Show("Invalid password");
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error: {ex.Message}");
-            }
+            UpdateUIState();
         }
 
         private void AddButton_Click(object sender, RoutedEventArgs e)
